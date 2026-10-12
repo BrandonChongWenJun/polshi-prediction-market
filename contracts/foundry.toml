@@ -1,0 +1,43 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+solc_version = "0.8.33"
+# Prague is supported by anvil, Sepolia and mainnet; pinning avoids emitting Osaka-only opcodes.
+evm_version = "prague"
+optimizer = true
+optimizer_runs = 200
+# via-IR keeps PredictionMarket (ERC-1155 + FPMM + LP fees + resolution) well below the 24,576-byte EIP-170 limit
+# (21.2 KB vs 24.4 KB with the legacy pipeline) and lowers gas; coverage therefore runs with --ir-minimum.
+via_ir = true
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "forge-std/=lib/forge-std/src/",
+]
+# Deploy.s.sol writes deployments/<chainId>.json (read by run.sh / scripts/gen_config.py).
+fs_permissions = [{ access = "read-write", path = "./deployments" }]
+
+[fuzz]
+runs = 512
+seed = "0x4053"
+
+[invariant]
+runs = 96
+depth = 48
+fail_on_revert = true
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
+number_underscore = "thousands"
+
+[lint]
+# ERC20 metadata (`name`, `symbol`, `decimals`) and public immutables (`market`, `votingPeriod`, ...) are part of
+# the external ABI, so they intentionally keep their conventional lowerCamelCase names.
+exclude_lints = ["screaming-snake-case-const", "screaming-snake-case-immutable"]
+# Tests intentionally use unchecked casts / raw token calls to build adversarial scenarios.
+ignore = ["test/**/*.sol"]

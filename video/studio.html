@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>WiseCrowd demo studio</title>
+<style>
+  :root {
+    --bg: #f2f4f7;
+    --card: #ffffff;
+    --line: #dde2ea;
+    --ink: #0f172a;
+    --ink-2: #475569;
+    --ink-3: #64748b;
+    --accent: #2557e8;
+    --accent-soft: #e9efff;
+    --yes: #2a6fdb;
+    --no: #ea6a2f;
+    --good: #15803d;
+    --good-bg: #e6f4ea;
+    --purple: #6d28d9;
+    --purple-bg: #f1eafe;
+    --amber: #a85b06;
+    --amber-bg: #fdf3e2;
+    --red: #b91c1c;
+    --red-bg: #fdecec;
+    --band: #0e1211;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    --mono: "Cascadia Mono", "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--band); font-family: var(--sans); color: var(--ink); }
+  /* laid out at 1536x864 and scaled to a native 1920x1080 frame (the app inside keeps a 1536px-wide layout) */
+  #root { position: absolute; left: 0; top: 0; width: 1536px; height: 864px; transform: scale(1.25); transform-origin: 0 0; }
+  #stage { position: absolute; left: 0; top: 0; width: 1536px; height: 768px; overflow: hidden; background: var(--bg); }
+  #appframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+  .layer { position: absolute; inset: 0; opacity: 0; transition: opacity .5s ease; pointer-events: none; background: var(--bg); }
+  .layer.on { opacity: 1; }
+
+  /* caption band */
+  #band { position: absolute; left: 0; top: 768px; width: 1536px; height: 96px; background: var(--band); border-top: 1px solid #26302d; display: flex; align-items: center; justify-content: center; padding: 0 64px; }
+  #cap { max-width: 1360px; color: #f5f7f6; font-size: 25px; line-height: 1.38; font-weight: 600; text-align: center; text-wrap: balance; opacity: 0; transition: opacity .16s ease; }
+  #cap.on { opacity: 1; }
+
+  /* cursor, click ripple, spotlight */
+  #fx { position: absolute; inset: 0; pointer-events: none; z-index: 40; }
+  #cursor { position: absolute; left: 0; top: 0; width: 30px; height: 30px; z-index: 60; pointer-events: none; transform: translate(760px, 420px); transition: transform .6s cubic-bezier(.45, 0, .2, 1), opacity .3s; opacity: 0; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  #cursor.on { opacity: 1; }
+  .ripple { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; border: 3px solid rgba(37, 87, 232, .9); background: rgba(37, 87, 232, .14); animation: rip .55s ease-out forwards; }
+  @keyframes rip { from { transform: scale(.25); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+  .spot { position: absolute; border: 3px solid #f59e0b; border-radius: 12px; box-shadow: 0 0 0 5px rgba(245, 158, 11, .22), 0 0 24px rgba(245, 158, 11, .35); opacity: 0; transition: opacity .3s ease; }
+  .spot.on { opacity: 1; }
+
+  /* slides */
+  .slide { position: absolute; inset: 0; padding: 40px 64px 0; opacity: 0; transition: opacity .5s ease; }
+  .slide.on { opacity: 1; }
+  .eyebrow { font-size: 14px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-family: var(--display); font-size: 38px; font-weight: 700; letter-spacing: -.01em; margin: 6px 0 0; }
+  [data-f] { transition: opacity .35s ease, box-shadow .35s ease, border-color .35s ease, transform .35s ease; }
+  .dim { opacity: .36; }
+  .lit { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(37, 87, 232, .18), 0 10px 28px rgba(15, 23, 42, .10) !important; }
+  .box, .card { background: var(--card); border: 1.5px solid var(--line); border-radius: 16px; box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 6px 18px rgba(15,23,42,.04); }
+  .tag { display: inline-block; font-size: 12.5px; font-weight: 700; letter-spacing: .04em; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); vertical-align: 3px; margin-left: 8px; text-transform: uppercase; }
+  .tag.core { background: #e7f6ee; color: var(--good); }
+  .tag.path { background: #eef1f5; color: var(--ink-2); text-transform: none; font-family: var(--mono); font-weight: 600; letter-spacing: 0; }
+  ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+  ul.plain li { position: relative; padding-left: 18px; color: var(--ink-2); font-size: 17px; line-height: 1.4; }
+  ul.plain li::before { content: ""; position: absolute; left: 2px; top: 10px; width: 7px; height: 7px; border-radius: 50%; background: #9aa6b8; }
+  ul.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  ul.checks li { position: relative; padding-left: 28px; font-size: 17.5px; line-height: 1.4; color: var(--ink); }
+  ul.checks li::before { content: ""; position: absolute; left: 0; top: 3px; width: 19px; height: 19px; border-radius: 50%; background: var(--good-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-6.5' fill='none' stroke='%2315803d' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/15px no-repeat; }
+
+  /* slide 1: architecture */
+  .arch { position: absolute; left: 64px; right: 64px; top: 138px; bottom: 34px; display: grid; grid-template-columns: 392px 118px 1fr; gap: 0; }
+  .client { padding: 22px 22px 20px; display: flex; flex-direction: column; gap: 16px; align-self: stretch; }
+  .box-h { font-family: var(--display); font-size: 23px; font-weight: 700; }
+  .client .box-h .ico { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); margin-right: 8px; vertical-align: -6px; }
+  .sub { margin-top: auto; border: 1.5px dashed var(--line); border-radius: 12px; padding: 14px; }
+  .sub-h { font-weight: 700; font-size: 15px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+  .pills { display: flex; flex-direction: column; gap: 8px; }
+  .pills span { display: block; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 12px; font-weight: 600; font-size: 16px; background: #fbfcfd; }
+  .col-mid { display: flex; flex-direction: column; justify-content: center; gap: 34px; padding: 0 8px; }
+  .flow { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 14.5px; font-weight: 600; color: var(--ink-3); text-align: center; }
+  .arr { display: block; width: 92px; height: 14px; position: relative; }
+  .arr::before { content: ""; position: absolute; left: 4px; right: 4px; top: 6px; height: 2.5px; background: #94a3b8; border-radius: 2px; }
+  .arr.r::after, .arr.l::after { content: ""; position: absolute; top: 1px; width: 0; height: 0; border-top: 6.5px solid transparent; border-bottom: 6.5px solid transparent; }
+  .arr.r::after { right: 0; border-left: 11px solid #94a3b8; }
+  .arr.l::after { left: 0; border-right: 11px solid #94a3b8; }
+  .chain { border: 2px dashed #b8c2d3; border-radius: 20px; padding: 14px 18px 18px; display: grid; grid-template-rows: auto 1.15fr 1.25fr 1fr; gap: 12px; background: rgba(255,255,255,.45); }
+  .chain-h { font-size: 14.5px; font-weight: 700; color: var(--ink-3); letter-spacing: .02em; }
+  .chain .box { padding: 14px 18px; }
+  .chain .box p { margin: 6px 0 0; color: var(--ink-2); font-size: 16.5px; line-height: 1.4; }
+  .feat { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .feat span { font-size: 15.5px; font-weight: 600; padding: 5px 11px; border-radius: 8px; background: #f3f6fb; border: 1px solid #e3e8f0; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .link { font-size: 13.5px; font-weight: 700; color: var(--accent); margin-bottom: 4px; letter-spacing: .01em; }
+  .tokens { display: flex; gap: 10px; margin-top: 10px; }
+  .tokens span { flex: 1; text-align: center; font-weight: 700; font-size: 16.5px; padding: 9px 8px; border-radius: 10px; }
+  .t.usdt { background: #e7f6ee; color: #11683a; }
+  .t.dai { background: #fdf3e2; color: #8a4b05; }
+  .t.weth { background: #eef0ff; color: #3f3fb5; }
+
+  /* slide 2: design */
+  .two { position: absolute; left: 64px; right: 64px; top: 146px; bottom: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+  .two .card { padding: 26px 28px; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; position: relative; }
+  .two h2 { font-family: var(--display); font-size: 26px; margin: 0; display: flex; align-items: center; gap: 12px; }
+  .two h2 small { font-size: 17px; color: var(--ink-3); font-weight: 600; }
+  .badge-n { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 18px; font-weight: 700; flex: none; }
+  .setviz { display: flex; align-items: center; justify-content: center; gap: 22px; padding: 18px 0 6px; }
+  .coin { width: 118px; height: 118px; border-radius: 50%; background: linear-gradient(145deg, #e9f7ef, #cdebd9); border: 2px solid #9fd3b3; display: grid; place-items: center; font-weight: 800; font-size: 21px; color: #11683a; text-align: center; line-height: 1.15; }
+  .coin small { display: block; font-size: 13px; font-weight: 600; color: #3f7a57; }
+  .mint { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; }
+  .mint .arr { width: 80px; }
+  .shares { display: flex; flex-direction: column; gap: 10px; }
+  .sh { width: 150px; padding: 12px 14px; border-radius: 12px; font-weight: 800; font-size: 19px; display: flex; align-items: center; gap: 10px; }
+  .sh::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: currentColor; }
+  .sh.yes { background: #e8f0fd; color: var(--yes); }
+  .sh.no { background: #fdeee6; color: var(--no); }
+  .eq { font-family: var(--mono); font-size: 16.5px; background: #f5f7fb; border: 1px solid #e3e8f0; border-radius: 12px; padding: 14px 16px; line-height: 1.5; color: var(--ink); text-align: center; }
+  .eq span { color: var(--ink-3); font-family: var(--sans); font-size: 14.5px; }
+  .formula { font-family: "Cambria Math", Cambria, Georgia, serif; font-size: 27px; text-align: center; background: #f5f7fb; border: 1px solid #e3e8f0; border-radius: 12px; padding: 14px 16px 12px; }
+  .formula span { display: block; font-family: var(--sans); font-size: 14.5px; color: var(--ink-3); margin-top: 4px; }
+  .example { display: grid; grid-template-columns: 1fr 120px 1fr; align-items: center; gap: 8px; }
+  .ex-col { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; }
+  .ex-h { font-size: 13px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; }
+  .bar { display: grid; grid-template-columns: 38px 1fr 42px; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 600; }
+  .bar i { display: block; height: 12px; border-radius: 6px; }
+  .bar b { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar.yes i { background: var(--yes); } .bar.no i { background: var(--no); }
+  .px { font-size: 15.5px; color: var(--ink-2); }
+  .px b { color: var(--yes); font-size: 19px; }
+  .ex-mid { text-align: center; font-size: 14px; font-weight: 700; color: var(--ink-3); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .ex-mid .arr { width: 84px; }
+  .ex-mid em { font-style: normal; font-size: 13px; color: var(--good); }
+
+  /* slide 3: lifecycle */
+  .timeline { position: absolute; left: 64px; right: 64px; top: 150px; margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; counter-reset: st; }
+  .timeline li { counter-increment: st; position: relative; background: var(--card); border: 1.5px solid var(--line); border-radius: 16px; padding: 48px 18px 18px; min-height: 206px; }
+  .timeline li::before { content: counter(st); position: absolute; left: 16px; top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+  .timeline li:not(:last-child)::after { content: ""; position: absolute; right: -13px; top: 22px; width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 11px solid #94a3b8; z-index: 2; }
+  .timeline b { display: block; font-family: var(--display); font-size: 22px; margin-bottom: 6px; }
+  .timeline span { display: block; font-size: 16.5px; line-height: 1.42; color: var(--ink-2); }
+  .paths { position: absolute; left: 64px; right: 64px; top: 426px; bottom: 44px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .paths-h { position: absolute; left: 64px; top: 396px; font-size: 13px; }
+  .path { border-radius: 16px; padding: 18px 20px; border: 1.5px solid var(--line); background: var(--card); display: flex; flex-direction: column; gap: 10px; }
+  .path .ph { font-family: var(--display); font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .path .ph i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .path p { margin: 0; font-size: 18px; line-height: 1.45; color: var(--ink-2); }
+  .path .who { margin-top: auto; font-size: 14.5px; font-weight: 700; padding: 6px 10px; border-radius: 8px; align-self: flex-start; }
+  .arb .ph i { background: var(--amber); } .arb .who { background: var(--amber-bg); color: var(--amber); }
+  .vote .ph i { background: var(--purple); } .vote .who { background: var(--purple-bg); color: var(--purple); }
+  .to .ph i { background: var(--red); } .to .who { background: var(--red-bg); color: var(--red); }
+
+  /* closing slide */
+  .end { position: absolute; left: 64px; right: 64px; top: 146px; bottom: 44px; display: grid; grid-template-columns: 1.25fr 1fr; grid-template-rows: 1fr auto; gap: 22px; }
+  .end .card { padding: 24px 26px; }
+  .end ul.checks { gap: 14px; }
+  .end ul.checks li { font-size: 19px; }
+  .end h3 { font-family: var(--display); font-size: 22px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  .end .bonus { display: grid; gap: 14px; grid-template-rows: repeat(3, 1fr); }
+  .end .bonus .card { padding: 16px 20px; }
+  .end .bonus h3 { margin-bottom: 6px; }
+  .end .bonus p { margin: 0; color: var(--ink-2); font-size: 17px; }
+  .end .foot { grid-column: 1 / -1; display: flex; gap: 12px; }
+  .end .foot span { flex: 1; text-align: center; padding: 12px; border-radius: 12px; background: var(--card); border: 1.5px solid var(--line); font-weight: 700; font-size: 17px; }
+  .end .foot span b { color: var(--good); }
+
+  /* terminal */
+  .term-wrap { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg); }
+  .term { width: 1240px; height: 640px; background: #0c1117; border-radius: 14px; box-shadow: 0 18px 50px rgba(15,23,42,.30); overflow: hidden; display: flex; flex-direction: column; border: 1px solid #1f2937; }
+  .tbar { height: 40px; background: #161c24; display: flex; align-items: center; gap: 8px; padding: 0 16px; color: #9aa4b2; font-size: 14px; font-weight: 600; border-bottom: 1px solid #222a35; }
+  .tbar i { width: 12px; height: 12px; border-radius: 50%; background: #3a4352; display: inline-block; }
+  .tbar i:nth-child(1) { background: #ff5f57; } .tbar i:nth-child(2) { background: #febc2e; } .tbar i:nth-child(3) { background: #28c840; }
+  .tbar span { margin-left: 10px; font-family: var(--mono); font-weight: 500; }
+  .tbar em { margin-left: auto; font-style: normal; font-size: 12.5px; color: #c9d1d9; background: #263040; padding: 3px 10px; border-radius: 999px; letter-spacing: .02em; }
+  #tout { margin: 0; padding: 16px 20px; flex: 1; overflow: hidden; font-family: var(--mono); font-size: 16px; line-height: 1.5; color: #d6dde6; white-space: pre-wrap; word-break: break-all; }
+  #tout .pr { color: #7ee787; } #tout .cwd { color: #79c0ff; }
+  #tout .c36 { color: #56d4dd; } #tout .c31 { color: #ff7b72; } #tout .c32 { color: #7ee787; } #tout .bold { font-weight: 700; }
+  #tout .hl { color: #7ee787; font-weight: 700; }
+  #tout .caret { display: inline-block; width: 9px; height: 19px; background: #d6dde6; vertical-align: -4px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="root">
+<div id="stage">
+  <iframe id="appframe" name="app" title="WiseCrowd app"></iframe>
+
+  <div id="slides" class="layer on">
+    <section class="slide on" id="s-arch">
+      <div class="eyebrow">Solution architecture</div>
+      <h1>WiseCrowd: a decentralized prediction market</h1>
+      <div class="arch">
+        <div class="box client" data-f="client">
+          <div class="box-h"><span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>Web app</div>
+          <ul class="plain">
+            <li>Static single-page app in plain JavaScript + ethers v6</li>
+            <li>No build step and no back-end server</li>
+            <li>Markets, trading, order book, liquidity, create, portfolio, reporters, wallet, dev tools</li>
+            <li>Reads contract views and events; sends transactions</li>
+          </ul>
+          <div class="sub" data-f="wallet">
+            <div class="sub-h">Wallet modes</div>
+            <div class="pills"><span>Demo accounts: Alice … Judy</span><span>MetaMask / any EIP-1193 wallet</span></div>
+          </div>
+        </div>
+        <div class="col-mid">
+          <div class="flow"><span>transactions</span><i class="arr r"></i></div>
+          <div class="flow"><i class="arr l"></i><span>views + events</span></div>
+        </div>
+        <div class="chain" data-f="chain">
+          <div class="chain-h">EVM CHAIN · local Anvil, chain id 31337 · Solidity 0.8.33 · Foundry · OpenZeppelin v5</div>
+          <div class="box" data-f="pm">
+            <div class="box-h">PredictionMarket <span class="tag core">core</span></div>
+            <div class="feat"><span>All markets in one contract</span><span>ERC-1155 outcome shares</span><span>Fixed-product market maker</span><span>Liquidity + LP fees</span><span>Complete sets</span><span>Resolution + redemption</span></div>
+          </div>
+          <div class="row2">
+            <div class="box" data-f="ob">
+              <div class="link">↑ moves outcome shares</div>
+              <div class="box-h">OrderBook <span class="tag">bonus 1</span></div>
+              <p>Peer-to-peer limit orders, fully escrowed. Partial fills and cancel.</p>
+            </div>
+            <div class="box" data-f="ro">
+              <div class="link">↑ reports the outcome as arbitrator</div>
+              <div class="box-h">ReputationOracle <span class="tag">bonus 3</span></div>
+              <p>Registered reporters, reputation-weighted votes, quorum.</p>
+            </div>
+          </div>
+          <div class="box" data-f="tok">
+            <div class="link">↕ collateral moved with SafeERC20</div>
+            <div class="box-h">Collateral tokens <span class="tag">bonus 2</span></div>
+            <div class="tokens"><span class="t usdt">USDT · 6 decimals</span><span class="t dai">DAI · 18 decimals</span><span class="t weth">WETH · 18 decimals</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="s-design">
+      <div class="eyebrow">Design</div>
+      <h1>Always solvent, and prices are probabilities</h1>
+      <div class="two">
+        <div class="card" data-f="sets">
+          <h2><span class="badge-n">1</span>Complete sets</h2>
+          <div class="setviz">
+            <div class="coin"><div>1 USDT<small>collateral</small></div></div>
+            <div class="mint">mint<i class="arr r"></i>merge<i class="arr l"></i></div>
+            <div class="shares"><div class="sh yes">1 Yes share</div><div class="sh no">1 No share</div></div>
+          </div>
+          <div class="eq">collateral locked = shares held + shares in the pool<br><span>for every outcome, at all times</span></div>
+          <ul class="checks">
+            <li>Every share in existence is fully backed</li>
+            <li>The contract can always pay every winner</li>
+            <li>Checked by invariant tests over thousands of random actions</li>
+          </ul>
+        </div>
+        <div class="card" data-f="fpmm">
+          <h2><span class="badge-n">2</span>Fixed-product market maker <small>Gnosis-style</small></h2>
+          <div class="formula">price<sub>i</sub> = (1 / b<sub>i</sub>) ÷ Σ<sub>k</sub> (1 / b<sub>k</sub>)<span>b<sub>i</sub> = pool balance of outcome i</span></div>
+          <div class="example">
+            <div class="ex-col">
+              <div class="ex-h">Pool before</div>
+              <div class="bar yes"><span>Yes</span><i style="width:86%"></i><b>600</b></div>
+              <div class="bar no"><span>No</span><i style="width:57%"></i><b>400</b></div>
+              <div class="px">Yes price <b>40%</b></div>
+            </div>
+            <div class="ex-mid">buy Yes<br>for 100<i class="arr r"></i><em>buyer gets 220 Yes</em></div>
+            <div class="ex-col">
+              <div class="ex-h">Pool after</div>
+              <div class="bar yes"><span>Yes</span><i style="width:69%"></i><b>480</b></div>
+              <div class="bar no"><span>No</span><i style="width:71%"></i><b>500</b></div>
+              <div class="px">Yes price <b>51%</b></div>
+            </div>
+          </div>
+          <ul class="checks">
+            <li>Buying an outcome makes it scarcer, so its price rises</li>
+            <li>Prices always add up to 100%</li>
+            <li>Every trade has a slippage limit</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" id="s-life">
+      <div class="eyebrow">Market lifecycle</div>
+      <h1>From question to payout</h1>
+      <ol class="timeline" data-f="tl">
+        <li data-f="t-create"><b>Create</b><span>Question, 2–8 outcomes, close and resolution times, collateral, starting liquidity and odds</span></li>
+        <li data-f="t-trade"><b>Trade</b><span>AMM buy and sell, P2P orders, add or remove liquidity, mint or merge sets</span></li>
+        <li data-f="t-close"><b>Close</b><span>AMM trading stops at the close time, to protect LPs. P2P orders and minting sets stay open until resolution</span></li>
+        <li data-f="t-resolve"><b>Resolve</b><span>By the arbitrator, a reporter vote, or a timeout</span></li>
+        <li data-f="t-redeem"><b>Redeem</b><span>1 collateral per winning share. LPs withdraw what they are owed</span></li>
+      </ol>
+      <div class="eyebrow paths-h">Three ways to resolve</div>
+      <div class="paths" data-f="paths">
+        <div class="path arb"><div class="ph"><i></i>Named arbitrator</div><p>Fixed when the market is created. Reports once, from the resolution time and within 7 days. Can also declare the market invalid.</p><span class="who">e.g. Dave reports “Yes”</span></div>
+        <div class="path vote"><div class="ph"><i></i>Reputation-weighted vote</div><p>Registered reporters vote, weighted by reputation, with a 50% quorum. Agreeing with the consensus earns +10; disagreeing costs 20%.</p><span class="who">ReputationOracle is the arbitrator</span></div>
+        <div class="path to"><div class="ph"><i></i>Timeout</div><p>No report within 7 days: anyone can resolve the market as invalid, and every share pays 1/N of a unit of collateral.</p><span class="who">No funds stay locked</span></div>
+      </div>
+    </section>
+
+    <section class="slide" id="s-end">
+      <div class="eyebrow">Summary</div>
+      <h1>WiseCrowd, deployed locally and demonstrated end to end</h1>
+      <div class="end">
+        <div class="card">
+          <h3>Core features</h3>
+          <ul class="checks">
+            <li>Create markets with times, arbitrator, collateral, liquidity and odds</li>
+            <li>Buy and sell with a price-impact preview and slippage limit</li>
+            <li>Prices derived from the pool, always summing to 100%</li>
+            <li>Liquidity, LP fees, complete sets</li>
+            <li>Arbitrator report, timeout to invalid, redemption</li>
+            <li>Market list, chart, positions, portfolio, two wallet modes</li>
+          </ul>
+        </div>
+        <div class="bonus">
+          <div class="card"><h3>Bonus 1 · P2P order book</h3><p>Escrowed limit orders, partial fills, cancel</p></div>
+          <div class="card"><h3>Bonus 2 · Multi-collateral</h3><p>USDT with 6 decimals, DAI and WETH</p></div>
+          <div class="card"><h3>Bonus 3 · Reputation vote</h3><p>Weighted votes, quorum, rewards and slashing</p></div>
+        </div>
+        <div class="foot"><span><b>180</b> Foundry tests passing</span><span>Fuzz + invariant tests for solvency</span><span>One-command local deployment: <b>./run.sh</b></span></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="term" class="layer">
+    <div class="term-wrap">
+      <div class="term">
+        <div class="tbar"><i></i><i></i><i></i><span id="ttitle">bash</span><em id="tnote">real output, replayed</em></div>
+        <pre id="tout"></pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="fx"></div>
+  <svg id="cursor" viewBox="0 0 28 28" aria-hidden="true"><path d="M5 2.5 L5 22.5 L10.2 17.6 L13.6 25.2 L17.1 23.7 L13.8 16.3 L20.8 16.1 Z" fill="#fff" stroke="#111" stroke-width="1.7" stroke-linejoin="round"/></svg>
+</div>
+<div id="band"><div id="cap"></div></div>
+</div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const cap = $("#cap"), cursor = $("#cursor"), fx = $("#fx"), tout = $("#tout");
+  let capTimer = null, cur = { x: 760, y: 420 };
+
+  function esc(s) { return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+  function ansi(s) {
+    let open = 0;
+    const html = esc(s).replace(/\x1b\[([0-9;]*)m/g, (_, codes) => {
+      if (codes === "0" || codes === "") { const close = "</span>".repeat(open); open = 0; return close; }
+      open++;
+      return `<span class="${codes.split(";").map((c) => (c === "1" ? "bold" : "c" + c)).join(" ")}">`;
+    });
+    return html + "</span>".repeat(open);
+  }
+
+  window.studio = {
+    caption(text, ms) {
+      clearTimeout(capTimer);
+      cap.classList.remove("on");
+      setTimeout(() => { cap.textContent = text; cap.classList.add("on"); }, 90);
+      if (ms) capTimer = setTimeout(() => cap.classList.remove("on"), ms + 120);
+    },
+    layer(name) {
+      $("#slides").classList.toggle("on", name === "slides");
+      $("#term").classList.toggle("on", name === "term");
+    },
+    slide(id) {
+      document.querySelectorAll(".slide").forEach((s) => s.classList.toggle("on", s.id === id));
+      this.focus(null);
+    },
+    focus(keys) {
+      const slide = document.querySelector(".slide.on");
+      if (!slide) return;
+      const want = keys ? keys.split(" ") : [];
+      slide.querySelectorAll("[data-f]").forEach((e) => {
+        const hit = want.includes(e.dataset.f);
+        const inside = want.some((k) => e.closest(`[data-f="${k}"]`) || e.querySelector(`[data-f="${k}"]`));
+        e.classList.toggle("lit", hit);
+        e.classList.toggle("dim", want.length > 0 && !hit && !inside);
+      });
+    },
+    cursorShow(on) { cursor.classList.toggle("on", on); },
+    cursorTo(x, y, ms) {
+      cursor.style.transitionDuration = `${ms}ms, .3s`;
+      cursor.style.transform = `translate(${x - 5}px, ${y - 3}px)`;
+      cur = { x, y };
+    },
+    ripple(x, y) {
+      const r = document.createElement("div");
+      r.className = "ripple";
+      r.style.left = x + "px"; r.style.top = y + "px";
+      fx.appendChild(r);
+      setTimeout(() => r.remove(), 700);
+    },
+    spot(rect, ms, pad = 6) {
+      const s = document.createElement("div");
+      s.className = "spot";
+      Object.assign(s.style, { left: rect.x - pad + "px", top: rect.y - pad + "px", width: rect.width + 2 * pad + "px", height: rect.height + 2 * pad + "px" });
+      fx.appendChild(s);
+      requestAnimationFrame(() => requestAnimationFrame(() => s.classList.add("on")));
+      setTimeout(() => s.classList.remove("on"), ms);
+      setTimeout(() => s.remove(), ms + 400);
+    },
+    clearSpots() { fx.querySelectorAll('.spot').forEach((s) => s.classList.remove('on')); },
+    term: {
+      reset(title, note) { $("#ttitle").textContent = title; $("#tnote").textContent = note; tout.innerHTML = ""; },
+      prompt(cwd) { tout.insertAdjacentHTML("beforeend", `<span class="pr">brandon@wsl</span>:<span class="cwd">${esc(cwd)}</span>$ <span class="typed"></span><span class="caret"></span>`); },
+      typeChar(ch) { const t = tout.querySelectorAll(".typed"); t[t.length - 1].textContent += ch; },
+      enter() { tout.querySelectorAll(".caret").forEach((c) => c.remove()); tout.insertAdjacentHTML("beforeend", "\n"); },
+      add(lines, cls) {
+        for (const l of lines) tout.insertAdjacentHTML("beforeend", (cls ? `<span class="${cls}">${ansi(l)}</span>` : ansi(l)) + "\n");
+        tout.scrollTop = tout.scrollHeight;
+      },
+    },
+  };
+})();
+</script>
+</body>
+</html>

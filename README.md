@@ -37,7 +37,13 @@ market resolves.
 
 Prerequisites: [Foundry](https://book.getfoundry.sh) (`forge`, `anvil`, `cast`) and Python 3 (stdlib only). No Node.js.
 The contracts compile with via-IR, so a cold `forge build` takes a minute or two; afterwards `./run.sh` is ready in
-about 30 seconds.
+about 30 seconds. OpenZeppelin and forge-std are git submodules in `contracts/lib`, so clone with `--recursive`
+(or run `git submodule update --init --recursive` in an existing clone):
+
+```bash
+git clone --recursive https://github.com/BrandonChongWenJun/wisecrowd-prediction-market.git
+cd wisecrowd-prediction-market
+```
 
 ```bash
 ./run.sh                      # from any directory

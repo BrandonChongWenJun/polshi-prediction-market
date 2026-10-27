@@ -1,0 +1,2 @@
+# LF everywhere, also on Windows checkouts: run.sh and the scripts run under bash/WSL, and forge fmt expects LF.
+* text=auto eol=lf

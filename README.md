@@ -173,7 +173,8 @@ proportion to its current balances and returns the rest to the LP as outcome tok
 (0–5 %, chosen at creation) accrues to LPs through a per-share accumulator; `claimFees` pays it at any time.
 `removeLiquidity` is never paused: before resolution it returns the LP's slice of the pool, merging the balanced part
 into collateral; after resolution it pays the slice's value directly — "LPs withdraw what they're owed" in one tx.
-LP shares are non-transferable internal balances (simpler, exact fee accounting).
+LP shares are non-transferable internal balances (simpler, exact fee accounting). What LPs risk, and how much trading
+the fee needs to cover it, is in Q11.
 
 ### Q4. The oracle problem — who says what happened?
 
@@ -263,6 +264,105 @@ precision in inputs), approves exact amounts and resets a non-zero USDT allowanc
 minimum liquidity, and (2) `pause` **new risk**: market creation, buy, sell, split and add-liquidity. The owner cannot
 move funds, change outcomes, arbitrators or times, and **exits are never pausable** (merge, remove liquidity, claim
 fees, report, timeout, redeem, cancel orders). The order book has no owner; the oracle owner only manages the registry.
+
+### Q11. Does a 2 % fee pay liquidity providers for their risk? — only with enough uninformed volume
+
+Every AMM trade is made against the pool, so **LPs as a group gain exactly what AMM traders as a group lose, fees
+included, and lose what traders win** (complete-set splits/merges and P2P orders never touch the pool). Traders who
+know more than the current price take money from the pool; the fee on every trade is how LPs get it back. This is the
+classic market-maker problem (Glosten–Milgrom): the spread that uninformed traders pay, here the fee, has to cover
+what the market maker loses to informed ones.
+
+**What an LP holds.** Take a binary market seeded with `L` collateral at 50 % (pool: `L` Yes + `L` No). Fees are kept
+outside the pool (Q2), so trades keep the product of the two balances at `L²` (rounding can only raise it). That
+product and the Yes price `p` fix the pool, and with several LPs the same holds for each LP's slice:
+
+```
+Yes balance = L·√((1−p)/p)      No balance = L·√(p/(1−p))      value at fair prices = 2L·√(p(1−p))
+```
+
+* The pool depends only on **where the price is, not on how it got there**. A buy followed by a sell puts the pool
+  back where it was and the LPs keep the fee on both legs, so uninformed two-way trading is pure profit for them
+  (`test_sell_roundTripLosesOnlyFeesAndRounding`: a 100 USDT round trip costs the trader 3.96 USDT and leaves the
+  price at 50 %).
+* The LP loses whenever the price moves away from where they entered, in either direction: `1 − 2√(p(1−p))` of the
+  deposit at fair prices. It is the same formula as Uniswap's impermanent loss, but here it is permanent: at
+  resolution every price ends at 0 or 1 and never comes back.
+* Withdrawing does not undo a move that has already happened: `removeLiquidity` pays out the LP's slice of the
+  current, lopsided pool (Q3). It only stops further exposure.
+
+**How much volume the fee needs.** The fee is 2 % of each trade, not 2 % of the deposit, so what matters is volume
+relative to the size of the pool. If the closing price is the true probability, the LP breaks even when
+`fee × volume ≥ L · (1 − 2√(p(1−p)))`, where volume counts every buy and sell, the informed ones included:
+
+| AMM closes at (LP entered at 50 %) | LP's slice at fair prices | Expected loss | Break-even volume, 2 % fee | 5 % fee (max) | Buying needed to move the price there (2 % fee) |
+|---|---|---|---|---|---|
+| 60 % | 0.980 L | 2 % | 1.0 L | 0.4 L | 0.23 L |
+| 70 % | 0.917 L | 8 % | 4.2 L | 1.7 L | 0.54 L |
+| 80 % | 0.800 L | 20 % | 10 L | 4 L | 1.0 L |
+| 90 % | 0.600 L | 40 % | 20 L | 8 L | 2.0 L |
+| 95 % | 0.436 L | 56 % | 28 L | 11 L | 3.4 L |
+| 99 % | 0.199 L | 80 % | 40 L | 16 L | 9.1 L |
+
+**Worked example.** 1,000 USDT of liquidity at 50 %, 2 % fee. A trader who knows that Yes is 90 % likely buys Yes
+until the price reaches 90 %: they pay 2,041 USDT (41 of it is the LPs' fee) for 2,667 Yes shares, leaving the pool
+with 333 Yes and 3,000 No.
+
+| Result | LP receives (pool slice + fees) | vs. 1,000 deposited |
+|---|---|---|
+| Yes (90 % likely) | 374 | −63 % |
+| No (10 % likely) | 3,041 | +204 % |
+| Expected | 641 | −36 % |
+| INVALID | 1,707 | +71 % |
+
+The trader's expected profit, 0.9 × 2,667 − 2,041 = 359, is exactly the LPs' expected loss. The fee recovered a
+tenth of what the price move cost (41 of 400); recovering the other 359 takes ≈ 18,000 USDT (18 × the pool) of
+round-trip volume from traders with no edge.
+
+**INVALID favours LPs who entered at even odds:** every share pays 1/N, so their slice is worth the average of its
+balances, and that average cannot fall below the deposit because the product of the balances never falls (AM–GM).
+An LP who joined at other odds also got outcome tokens back (Q3) and can gain or lose under INVALID.
+
+**Protections already in the design**
+
+* **No trading against a known result.** The AMM closes at `closeTime` and reporting opens at
+  `resolutionTime ≥ closeTime` (Q6). With `closeTime` set before the event starts, nobody can buy the winner from the
+  pool after the fact, the most damaging kind of informed trade. Adding liquidity also stops at `closeTime`.
+* **Losses are capped at the deposit.** Fees go to `feePool`, outside the pool, and can be claimed at any time, so
+  fees already earned are never at risk.
+* **Exits are never paused** (Q10), so an LP can leave before scheduled news, within the limit described above.
+* **The creator sets the opening odds** (Q1). LPs lose on the distance the price travels from where they entered, so
+  accurate odds are the cheapest protection: a market opened at 50 % on a 90 % event costs its LPs 40 % of the
+  deposit before fees. LPs who join later enter at the current price and do not pay for earlier moves.
+* **The fee is set per market** (0–5 %; the UI defaults to 2 %). A creator who expects informed trading can charge
+  more, but traders then need a bigger edge before a trade pays, so prices follow news more slowly.
+* Rounding always favours the pool, i.e. the LPs (Q2).
+
+**So who would provide liquidity?** A passive LP who seeds at the opening odds and holds to resolution loses money, on
+average, in exactly the markets that turn out most informative. In this design liquidity comes from:
+
+* **creators acting as sponsors**: every creator is the first LP, and the expected loss is what they pay for a crowd
+  forecast (Hanson's view of automated market makers: the sponsor's subsidy pays traders for information);
+* **LPs who think the price is already right** and expect heavy two-way trading (popular sports or election markets),
+  where volume runs to many times the pool;
+* **active LPs** who withdraw before scheduled news and come back afterwards.
+
+It does not work as a passive "2 % yield". Production markets reached the same conclusion: Polymarket replaced its AMM
+with an order book at the end of 2022, where market makers set their own prices, can cancel quotes when news breaks,
+and receive liquidity rewards.
+
+**What we would add next** (also listed in §8)
+
+1. **A fee that rises towards `closeTime`** (e.g. 2 % → 5 % over the last day), when trades are most likely to be
+   informed. `_feeOn` would take the market instead of a fixed `feeBps`; late casual traders would pay more too.
+2. **An LP risk preview** in the Liquidity tab: what the LP's slice pays if each outcome wins, and the volume needed
+   to break even (each market already records its `volume`, shown on the market page).
+3. **Maker incentives in the order book**, such as a small taker fee paid to makers or rewards for quotes near the mid
+   price. Makers already set their own prices and can cancel (Q7), so they avoid the passive LP's problem, but
+   nothing pays them for quoting.
+4. **LMSR for sponsored markets**: the sponsor's worst-case loss is known up front (`b·ln N`, ≈ 0.69·b for a binary
+   market) instead of "up to the whole deposit", at the cost of fixed-point `exp`/`ln` and a fixed liquidity
+   parameter (Q1).
 
 ---
 
@@ -390,8 +490,10 @@ Fallback if something goes wrong live: Ctrl-C and `./run.sh` again gives the ide
   allows herding and late copying — commit-reveal voting would fix it at the cost of a second transaction per vote;
   reporters are not prevented from trading the markets they vote on.
 * **INVALID = 1/N per share**, not a refund of each trader's cost basis (impossible with transferable shares, Q5).
-* **LP shares are not tokens** (non-transferable); LPs bear FPMM impermanent loss and can lose most of their deposit in a
-  lopsided market.
+* **LP shares are not tokens** (non-transferable).
+* **LPs lose to informed traders**: a passive LP who holds to resolution needs volume of many times the pool to break
+  even at a 2 % fee, and can lose most of the deposit in a market whose price moves far (Q11). Future: a fee that
+  rises towards `closeTime`, an LP risk preview, maker incentives in the order book, LMSR for sponsored markets.
 * **Order book** fills one order per transaction (no batch/route across price levels, no AMM+book routing) and has no
   matching of a YES bid with a NO bid via minting.
 * **On-chain strings** cost gas; the UI reads history with `eth_getLogs` from the deployment block, which is fine on

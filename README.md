@@ -41,8 +41,8 @@ about 30 seconds. OpenZeppelin and forge-std are git submodules in `contracts/li
 (or run `git submodule update --init --recursive` in an existing clone):
 
 ```bash
-git clone --recursive https://github.com/BrandonChongWenJun/wisecrowd-prediction-market.git
-cd wisecrowd-prediction-market
+git clone --recursive https://github.com/BrandonChongWenJun/polshi-prediction-market.git
+cd polshi-prediction-market
 ```
 
 ```bash

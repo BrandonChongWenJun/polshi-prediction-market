@@ -28,7 +28,7 @@ export const bus = {
 
 export function loadSetting(key, fallback) {
   try {
-    const v = localStorage.getItem(`wc.${key}`);
+    const v = localStorage.getItem(`polshi.${key}`);
     return v === null ? fallback : JSON.parse(v);
   } catch {
     return fallback;
@@ -37,7 +37,7 @@ export function loadSetting(key, fallback) {
 
 export function saveSetting(key, value) {
   try {
-    localStorage.setItem(`wc.${key}`, JSON.stringify(value));
+    localStorage.setItem(`polshi.${key}`, JSON.stringify(value));
   } catch {
     /* private mode */
   }

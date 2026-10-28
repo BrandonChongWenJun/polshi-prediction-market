@@ -131,7 +131,7 @@ document.getElementById("theme-toggle").onclick = () => {
   const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
   document.documentElement.setAttribute("data-theme", next);
   try {
-    localStorage.setItem("wc.theme", next);
+    localStorage.setItem("polshi.theme", next);
   } catch {
     /* ignore */
   }

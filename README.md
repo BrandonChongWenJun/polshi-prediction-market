@@ -1,6 +1,6 @@
-# WiseCrowd — a decentralized prediction market (SC4053 · Option 4)
+# PolShi — a decentralized prediction market (SC4053 · Option 4)
 
-WiseCrowd lets anyone open a market on a future real-world event, trade outcome shares whose prices are the crowd's
+PolShi lets anyone open a market on a future real-world event, trade outcome shares whose prices are the crowd's
 probabilities, and settle the market through a **named arbitrator** or a **reputation-weighted vote of registered
 reporters**. Every outcome share is backed 1:1 by collateral, markets can be denominated in **USDT (6 decimals),
 DAI (18) or WETH (18)**, and shares can also be traded **peer-to-peer** in an escrowed limit-order book before the

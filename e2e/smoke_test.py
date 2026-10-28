@@ -219,7 +219,7 @@ INJECTED_WALLET = """
 
 def run(browser) -> None:
     ctx = browser.new_context(viewport={"width": 1440, "height": 1000})
-    ctx.add_init_script("localStorage.setItem('wc.theme', 'light')")
+    ctx.add_init_script("localStorage.setItem('polshi.theme', 'light')")
     page = ctx.new_page()
     ui = UI(page, "main")
 
@@ -530,7 +530,7 @@ def run(browser) -> None:
     ui.shot("14_dark_market", full=False)
     page.evaluate("document.documentElement.setAttribute('data-theme','light')")
     mobile = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2)
-    mobile.add_init_script("localStorage.setItem('wc.theme', 'light')")
+    mobile.add_init_script("localStorage.setItem('polshi.theme', 'light')")
     mp = mobile.new_page()
     mui = UI(mp, "mobile")
     mui.goto("#/market/1")
@@ -547,7 +547,7 @@ def run(browser) -> None:
     print("[12] injected EIP-1193 wallet")
     ictx = browser.new_context(viewport={"width": 1440, "height": 1000})
     ictx.add_init_script(INJECTED_WALLET.replace("%RPC%", RPC).replace("%ACCOUNT%", IVAN))
-    ictx.add_init_script("localStorage.setItem('wc.theme', 'light')")
+    ictx.add_init_script("localStorage.setItem('polshi.theme', 'light')")
     ip = ictx.new_page()
     iui = UI(ip, "injected")
     iui.goto("#/wallet")
@@ -570,7 +570,7 @@ def run(browser) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="WiseCrowd end-to-end smoke test")
+    ap = argparse.ArgumentParser(description="PolShi end-to-end smoke test")
     ap.add_argument("--no-start", action="store_true", help="use an already running ./run.sh")
     ap.add_argument("--headed", action="store_true")
     args = ap.parse_args()

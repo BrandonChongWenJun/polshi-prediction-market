@@ -1004,6 +1004,11 @@ export async function mount(root, idStr) {
             ? `Registered reporters vote after ${fmtDate(m.resolutionTime)}. Votes are weighted by reputation; a quorum of reputation must vote and the heaviest outcome wins. No quorum or a tie extends voting once, then the market resolves INVALID.`
             : `The arbitrator <b>${esc(nameOf(m.arbitrator))}</b> (<span class="mono">${esc(m.arbitrator)}</span>) reports the outcome after ${fmtDate(m.resolutionTime)}. The report is final.`
         } If nothing is reported within 7 days after the resolution time, anyone can resolve the market as INVALID.</p>
+        <p data-testid="rules-trust"><b>Who you are trusting.</b> The contract cannot check real-world events, so ${
+          m.isOracle
+            ? "this market pays out on the reputation-weighted majority of the registered reporters. You are trusting that most of that reputation votes honestly."
+            : `this market pays out on whatever <b>${esc(nameOf(m.arbitrator))}</b> reports. The arbitrator was fixed when the market was created and cannot be replaced. Their only power is one report, between ${fmtDate(m.resolutionTime)} and ${fmtDate(m.resolutionTime + 7 * 86400)}, and they can never touch the collateral.`
+        }</p>
         <p><b>Payouts.</b> Each share of the winning outcome redeems for 1 ${esc(m.token.symbol)}. INVALID pays 1/${m.n} ${esc(m.token.symbol)} per share of any outcome, so holders of complete sets (and LPs) get their collateral back.</p>
         <p><b>Pricing.</b> A constant-product market maker (Gnosis FPMM) quotes prices; they always sum to 100%. Every share is backed 1:1 by collateral held in the contract.</p>
         <p><b>Collateral.</b> ${esc(m.token.name)} · <span class="mono">${esc(m.collateral)}</span> · ${m.token.decimals} decimals. LP fee ${(m.feeBps / 100).toFixed(2)}%.</p>

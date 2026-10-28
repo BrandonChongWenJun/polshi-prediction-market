@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WiseCrowd · Prediction Markets</title>
+    <title>PolShi · Prediction Markets</title>
     <meta name="description" content="Decentralized prediction markets: trade outcome shares, read crowd probabilities, resolve by arbitrator or reputation-weighted vote." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232f5be0'/%3E%3Cpath d='M7 21l6-7 5 4 7-9' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="styles.css" />
@@ -11,7 +11,7 @@
       // apply the saved / OS theme before first paint
       (function () {
         var t = null;
-        try { t = localStorage.getItem("wc.theme"); } catch (e) {}
+        try { t = localStorage.getItem("polshi.theme"); } catch (e) {}
         if (!t) t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
         document.documentElement.setAttribute("data-theme", t);
       })();
@@ -20,9 +20,9 @@
   <body>
     <header class="topbar">
       <div class="topbar-inner">
-        <a class="brand" href="#/" aria-label="WiseCrowd home">
+        <a class="brand" href="#/" aria-label="PolShi home">
           <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--accent)"/><path d="M7 21l6-7 5 4 7-9" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="brand-name">WiseCrowd</span>
+          <span class="brand-name">PolShi</span>
         </a>
         <nav class="nav" id="nav">
           <a href="#/" data-route="markets">Markets</a>
